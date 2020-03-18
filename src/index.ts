@@ -23,7 +23,7 @@ async function main() {
       const letters = await client
         .db()
         .collection('letters')
-        .find({}, { fields: letterPublicFields })
+        .find({ approved: true }, { fields: letterPublicFields })
         .toArray();
       res.json(letters);
     } catch (error) {
