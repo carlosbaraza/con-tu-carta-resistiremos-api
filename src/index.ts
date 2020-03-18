@@ -1,13 +1,65 @@
 import express from "express";
+import { MongoClient } from "mongodb";
+import bodyParser from "body-parser";
+import Joi from "joi";
 
-const app = express();
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/con-tu-carta-resistiremos";
+const client = new MongoClient(uri);
 
-const LETTERS = [
-  { title: "Animo", body: "Animo, todos estamos contigo. Vamos a salir juntos de esta." }
-];
+async function main() {
+  await client.connect();
 
-app.get("/letters", (req, res) => {
-  res.json(LETTERS);
-});
+  const app = express();
+  app.use(bodyParser.json());
 
-app.listen(process.env.PORT || 3001);
+  app.get("/letters", async (req, res) => {
+    try {
+      const letters = await client
+        .db()
+        .collection("letters")
+        .find({})
+        .toArray();
+      res.json(letters);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  app.post("/letters", async (req, res) => {
+    const schema = Joi.object().keys({
+      title: Joi.string()
+        .min(3)
+        .max(150)
+        .trim()
+        .required(),
+      body: Joi.string()
+        .min(3)
+        .trim()
+        .required(),
+      email: Joi.string()
+        .trim()
+        .email()
+    });
+    const { error: validationError, value: parsedDocument } = Joi.validate(req.body, schema);
+
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    try {
+      const letter = await client
+        .db()
+        .collection("letters")
+        .insertOne(parsedDocument);
+      res.json({ _id: letter.insertedId });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  });
+
+  app.listen(process.env.PORT || 3001);
+}
+
+main();
