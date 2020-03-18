@@ -1,7 +1,9 @@
+import { corsOptions } from "./cors";
 import express from "express";
 import { MongoClient } from "mongodb";
 import bodyParser from "body-parser";
 import Joi from "joi";
+import cors from "cors";
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/con-tu-carta-resistiremos";
 const client = new MongoClient(uri);
@@ -11,6 +13,7 @@ async function main() {
 
   const app = express();
   app.use(bodyParser.json());
+  app.use(cors(corsOptions));
 
   app.get("/letters", async (req, res) => {
     try {
